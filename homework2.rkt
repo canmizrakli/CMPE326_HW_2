@@ -1,80 +1,71 @@
 #lang scheme
 
-;; Define the build-path function
-(define (build-path rows)
+; Helper function to build the path (provided in the homework)
+(define (buildPath rows)
   (cond
-    ((null? rows) '())
-    (else (cons (car rows) (build-path (cdr rows))))))
+    ((null? rows) null)
+    (else (cons (car rows) (buildPath (cdr rows))))))
 
-;; Sample path
-(define sample-path
-  (build-path
-   '(("S" "-" "-" "-" "-")
-     ("E" "-" "-" "-" "-")
-     ("E" "E" "E" "E" "E")
-     ("-" "-" "-" "-" "E")
-     ("-" "-" "-" "-" "F"))))
+; Sample path given in the homework
+(define sample-path (buildPath
+  '(("S" "-" "-" "-" "-")
+    ("E" "-" "-" "-" "-")
+    ("E" "E" "E" "E" "E")
+    ("-" "-" "-" "-" "E")
+    ("-" "-" "-" "-" "F"))))
 
-;; Task 1: Define getHeight and getWidth
+; Task 1: Define getHeight function
 (define (getHeight path)
   (length path))
 
+; Task 1: Define getWidth function
 (define (getWidth path)
   (if (null? path)
       0
       (length (car path))))
 
-;; Task 2: Define getLetter
+; Task 2: Define getLetter function
 (define (getLetter path row col)
-  (if (or (< row 0) (>= row (getHeight path)) (< col 0) (>= col (getWidth path)))
-      '()
-      (list-ref (list-ref path row) col)))
+  (list-ref (list-ref path row) col))
 
-;; Task 3: Define solvePath
+; Task 3: Define solvePath function
 (define (solvePath path)
-  ;; Find the finish cell labeled "F"
-  (define (findFinish path)
-    (define (find-row rows r)
-      (if (null? rows)
-          '()
-          (let ((c (find-col (car rows) 0)))
-            (if c
-                (cons r c)
-                (find-row (cdr rows) (+ r 1))))))
-    (define (find-col row c)
-      (if (null? row)
-          #f
-          (if (equal? (car row) "F")
-              (list c)
-              (find-col (cdr row) (+ c 1)))))
-    (find-row path 0))
+  (define directions '((0 1 R) (1 0 D) (0 -1 L) (-1 0 U)))
+  (define height (getHeight path))
+  (define width (getWidth path))
+  
+  (define (in-bounds? row col)
+    (and (>= row 0) (< row height) (>= col 0) (< col width)))
+  
+  (define (find-path row col visited)
+    (if (equal? (getLetter path row col) "F")
+        '()
+        (let loop ((dirs directions))
+          (if (null? dirs)
+              #f
+              (let* ((dir (car dirs))
+                     (new-row (+ row (car dir)))
+                     (new-col (+ col (cadr dir)))
+                     (move (caddr dir)))
+                (if (and (in-bounds? new-row new-col)
+                         (not (member (list new-row new-col) visited))
+                         (or (equal? (getLetter path new-row new-col) "E")
+                             (equal? (getLetter path new-row new-col) "F")))
+                    (let ((result (find-path new-row new-col (cons (list new-row new-col) visited))))
+                      (if result
+                          (cons move result)
+                          (loop (cdr dirs))))
+                    (loop (cdr dirs))))))))
+  (find-path 0 0 '((0 0))))
 
-  ;; Helper function to recursively find the path
-  (define (helper pos finish visited)
-    (let ((row (car pos))
-          (col (cadr pos))
-          (fr (car finish))
-          (fc (cadr finish)))
-      (if (or (member pos visited)
-              (< row 0) (>= row (getHeight path))
-              (< col 0) (>= col (getWidth path)))
-          '()
-          (let ((current-letter (getLetter path row col)))
-            (if (equal? pos finish)
-                '()
-                (let ((new-visited (cons pos visited)))
-                  (cond
-                    ((equal? (getLetter path (+ row 1) col) "E")
-                     (cons 'D (helper (list (+ row 1) col) finish new-visited)))
-                    ((equal? (getLetter path row (+ col 1)) "E")
-                     (cons 'R (helper (list row (+ col 1)) finish new-visited)))
-                    ((equal? (getLetter path row (- col 1)) "E")
-                     (cons 'L (helper (list row (- col 1)) finish new-visited)))
-                    ((equal? (getLetter path (- row 1) col) "E")
-                     (cons 'U (helper (list (- row 1) col) finish new-visited)))
-                    (else '()))))))))
-
-  (helper '(0 0) (findFinish path) '()))
-
-;; Example usage
-(display (solvePath sample-path)) ; Output should be (D D R R R R D D)
+; Testing the functions
+(display (getHeight sample-path)) ; should return 5
+(newline)
+(display (getWidth sample-path)) ; should return 5
+(newline)
+(display (getLetter sample-path 0 0)) ; should return "S"
+(newline)
+(display (getLetter sample-path 1 0)) ; should return "E"
+(newline)
+(display (solvePath sample-path)) ; should return (D D R R R R D D)
+(newline)
